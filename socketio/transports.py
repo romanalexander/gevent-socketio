@@ -239,8 +239,12 @@ class XHRMultipartTransport(XHRPollingTransport):
 class WebsocketTransport(BaseTransport):
     def do_exchange(self, socket, request_method):
         websocket = self.handler.environ['wsgi.websocket']
-        websocket.send("1::")  # 'connect' packet
-
+        try:
+            websocket.send("1::")  # 'connect' packet
+        except WebSocketError: # Socket is dead.
+            socket.disconnect()
+            return
+        
         def send_into_ws():
             while True:
                 message = socket.get_client_msg()
@@ -258,7 +262,7 @@ class WebsocketTransport(BaseTransport):
             while True:
                 try:
                     message = websocket.receive()
-                except WebSocketError:
+                except WebSocketError: # Socket is dead.
                     message = None
                     socket.disconnect()
                     
